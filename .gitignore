@@ -1,0 +1,9 @@
+settings.ini
+last-status.txt
+AutoHotkey64.exe
+events.log*
+startup-backup.json
+webview/
+work/
+backup-*/
+settings.ini.bak

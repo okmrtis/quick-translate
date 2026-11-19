@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>翻訳</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --ink: #18181a;
+  --ink-2: #48484d;
+  --ink-3: #6b6b70;
+  --line: rgba(24, 24, 26, 0.08);
+  --raised: #f3f3f4;
+  --hover: rgba(24, 24, 26, 0.06);
+  --gloss: #1d4e9e;
+  --tick: rgba(29, 78, 158, 0.32);
+  --progress: #2f6fd6;
+  --changed: rgba(255, 200, 40, 0.42);
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08);
+  --bar: #ffffff;
+  --jp: "Noto Sans JP", "BIZ UDPGothic", "Yu Gothic UI", sans-serif;
+  --latin: "Noto Sans", "Noto Sans JP", "Segoe UI Variable Text", sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e;
+    --ink: #ededed;
+    --ink-2: #b9b9be;
+    --ink-3: #94949a;
+    --line: rgba(237, 237, 237, 0.09);
+    --raised: #2a2a2d;
+    --hover: rgba(237, 237, 237, 0.08);
+    --gloss: #9ec1ff;
+    --tick: rgba(158, 193, 255, 0.36);
+    --progress: #7fb0ff;
+    --changed: rgba(255, 200, 40, 0.30);
+    --shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07);
+    --bar: #2a2a2d;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); }
+body { color: var(--ink); font-family: var(--jp); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+#app { display: flex; flex-direction: column; height: 100%; transition: opacity 100ms var(--ease); }
+#app.closing { opacity: 0; }
+
+header { position: relative; flex: none; display: flex; align-items: center; height: 52px; padding: 0 10px 0 16px; -webkit-app-region: drag; app-region: drag; user-select: none; }
+.mark { width: 28px; height: 28px; flex: none; }
+#title { margin-left: 10px; font-size: 14px; font-weight: 500; color: var(--ink); }
+.actions { margin-left: auto; display: flex; gap: 4px; -webkit-app-region: no-drag; app-region: no-drag; }
+.actions button { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--ink-2); cursor: default; transition: background-color 140ms var(--ease), transform 140ms var(--ease); }
+.actions button:hover { background: var(--hover); color: var(--ink); }
+.actions button:active { transform: scale(0.97); }
+.actions button:focus-visible { outline: 2px solid var(--progress); outline-offset: 1px; }
+.actions svg { width: 20px; height: 20px; }
+#copy .done { display: none; }
+#copy.copied .idle { display: none; }
+#copy.copied .done { display: block; }
+#copy[disabled] { opacity: 0.35; }
+#copy[disabled]:hover { background: transparent; }
+#max .on { display: none; }
+.max #max .off { display: none; }
+.max #max .on { display: block; }
+
+#progress { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; overflow: hidden; opacity: 0; transition: opacity 200ms var(--ease); }
+.loading #progress { opacity: 1; }
+#progress::after { content: ""; position: absolute; top: 0; bottom: 0; width: 36%; left: -36%; background: var(--progress); border-radius: 1px; animation: travel 1.3s var(--ease) infinite; }
+@keyframes travel { to { left: 100%; } }
+header::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--line); opacity: 0; transition: opacity 160ms var(--ease); }
+.scrolled header::before { opacity: 1; }
+
+main { flex: 1; overflow-y: auto; overflow-x: hidden; }
+main::-webkit-scrollbar { width: 12px; }
+main::-webkit-scrollbar-thumb { background: var(--line); border: 4px solid transparent; background-clip: padding-box; border-radius: 6px; }
+main:hover::-webkit-scrollbar-thumb { background-color: rgba(128, 128, 133, 0.35); }
+#content { padding: 4px 20px 24px; }
+
+#full { font-size: 16px; line-height: 1.8; letter-spacing: 0.01em; color: var(--ink); }
+#full p { margin: 0 0 8px; }
+#full p:last-child { margin-bottom: 0; }
+#full ul { margin: 0 0 8px; padding-left: 20px; }
+#full code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; background: var(--raised); border-radius: 4px; padding: 1px 4px; }
+#full strong { font-weight: 600; }
+.skeleton { display: grid; gap: 12px; padding: 6px 0 4px; }
+.skeleton span { display: block; height: 12px; border-radius: 6px; background: var(--raised); }
+.skeleton span:nth-child(2) { width: 88%; }
+.skeleton span:nth-child(3) { width: 56%; }
+.message { color: var(--ink-2); font-size: 14px; }
+
+#pairs { margin-top: 24px; }
+#pairs[hidden] { display: none; }
+.label { font-size: 12px; font-weight: 500; color: var(--ink-3); margin-bottom: 10px; }
+.sent { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 2px; }
+.sent + .sent { margin-top: 22px; }
+.c { display: flex; flex-direction: column; padding: 0 4px; max-width: 100%; }
+.c .o { font-family: var(--latin); font-size: 15px; line-height: 22px; color: var(--ink); overflow-wrap: anywhere; }
+.c .g { margin-top: 3px; padding-top: 3px; border-top: 1.5px solid var(--tick); font-size: 12px; line-height: 17px; font-weight: 500; color: var(--gloss); overflow-wrap: anywhere; }
+.rest { font-family: var(--latin); font-size: 15px; line-height: 24px; color: var(--ink-3); white-space: pre-wrap; overflow-wrap: anywhere; }
+.sent .rest { padding: 0 4px; }
+.source { font-family: var(--latin); font-size: 15px; line-height: 1.6; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Revision: selecting text opens a compact comment card right away */
+#ask { position: fixed; z-index: 10; }
+#ask[hidden], #ask [hidden] { display: none !important; }
+@keyframes ask-in { from { opacity: 0; transform: translateY(4px) scale(0.98); } }
+::highlight(ask) { background-color: rgba(47, 111, 214, 0.22); }
+#ask-form { display: flex; align-items: center; gap: 6px; width: 300px; max-width: calc(100vw - 24px); height: 40px; padding: 0 5px 0 14px; background: var(--bar); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10); animation: ask-in 140ms var(--ease); }
+#ask-form:focus-within { border-color: var(--progress); }
+#ask-input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: 13.5px/1.4 var(--jp); }
+#ask-input::placeholder { color: var(--ink-3); }
+#ask-send { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 15px; background: var(--progress); color: #ffffff; cursor: default; transition: transform 140ms var(--ease), filter 140ms var(--ease); }
+#ask-send:hover { filter: brightness(1.08); }
+#ask-send:active { transform: scale(0.94); }
+#ask-send svg { width: 15px; height: 15px; }
+/* Sentences a revision changed, marked like a highlighter for a few seconds */
+mark.changed { color: inherit; background: linear-gradient(transparent 52%, var(--changed) 52%); border-radius: 2px; transition: opacity 1.2s var(--ease); }
+mark.changed.faded { background: transparent; }
+
+/* A wide window (maximized, or widened by hand) keeps a readable column with larger type. */
+@media (min-width: 720px) {
+  #content { max-width: 880px; margin: 0 auto; padding: 20px 40px 48px; }
+  #full { font-size: 18px; line-height: 1.85; }
+  #pairs { margin-top: 32px; }
+  .sent { gap: 12px 4px; }
+  .sent + .sent { margin-top: 26px; }
+  .c .o, .rest, .source { font-size: 17px; line-height: 26px; }
+  .c .g { font-size: 13px; line-height: 19px; }
+}
+</style>
+</head>
+<body>
+<div id="app" class="loading">
+  <header>
+    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="1" y="1" width="62" height="62" rx="15" fill="#eef2f8" stroke="rgba(24,40,72,0.10)" stroke-width="1"/>
+      <path d="M14 9h16a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6h-9l-6 5v-5h-1a6 6 0 0 1-6-6V15a6 6 0 0 1 6-6z" fill="#d5dbe5"/>
+      <text x="22" y="26.2" text-anchor="middle" font-family="Segoe UI Variable Display, Segoe UI, sans-serif" font-weight="600" font-size="13.5" fill="#56606f">A</text>
+      <path d="M34 26h16a7 7 0 0 1 7 7v11a7 7 0 0 1-7 7h-1v6l-7-6H34a7 7 0 0 1-7-7V33a7 7 0 0 1 7-7z" fill="#2563eb"/>
+      <text x="42" y="44.6" text-anchor="middle" font-family="Noto Sans JP, Yu Gothic UI, sans-serif" font-weight="500" font-size="15" fill="#ffffff">あ</text>
+    </svg>
+    <span id="title">翻訳中</span>
+    <div class="actions">
+      <button id="copy" type="button" title="訳をコピー" aria-label="訳をコピー" disabled>
+        <svg class="idle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-8A2.5 2.5 0 0 0 3 5.5v8A2.5 2.5 0 0 0 5.5 16H8"/></svg>
+        <svg class="done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      </button>
+      <button id="max" type="button" title="画面いっぱいに広げる (F11)" aria-label="画面いっぱいに広げる">
+        <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
+        <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>
+      </button>
+      <button id="close" type="button" title="閉じる (Esc / Ctrl+W)" aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div id="progress"></div>
+  </header>
+  <main id="scroll">
+    <div id="content">
+      <section id="full"></section>
+      <section id="pairs" hidden>
+        <div class="label" id="pairs-label">原文</div>
+        <div id="il"></div>
+      </section>
+    </div>
+  </main>
+</div>
+<div id="ask" hidden>
+  <div id="ask-form" hidden>
+    <input id="ask-input" type="text" placeholder="直したい点（任意）" autocomplete="off" spellcheck="false">
+    <button id="ask-send" type="button" title="訳し直す (Enter)" aria-label="訳し直す">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+    </button>
+  </div>
+</div>
+<script>
+'use strict';
+// The listener (QuickTranslate.ahk) sends JSON messages: {op:"start", source}, the Claude
+// CLI's stream lines (text deltas and the final result), {op:"error"}, {op:"close"}.
+// The page answers with short strings: ready, size:<css px>, copy:<text>, drag, hide,
+// maximize, keep-open, and revise:<JSON> when the user asks to revise a selection.
+const host = window.chrome && window.chrome.webview;
+const send = message => { if (host) host.postMessage(message); };
+const $ = id => document.getElementById(id);
+const app = $('app'), titleEl = $('title'), fullEl = $('full'), pairsEl = $('pairs');
+const labelEl = $('pairs-label'), ilEl = $('il'), scrollEl = $('scroll'), copyEl = $('copy');
+let job = null, frame = 0, copiedTimer = 0;
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+function inline(s) {
+  return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+function splitAnswer(text) {
+  const lines = text.split(/\r?\n/);
+  const rule = lines.findIndex(l => /^\s*-{3,}\s*$/.test(l));
+  return rule < 0 ? { full: text, pairs: null } : { full: lines.slice(0, rule).join('\n'), pairs: lines.slice(rule + 1) };
+}
+function plainText(md) {
+  return md.replace(/\*\*(.+?)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1').replace(/\n{3,}/g, '\n\n').trim();
+}
+// After a revision, sentences that are not in the previous translation are marked.
+function renderLine(line, previous) {
+  if (previous == null) return inline(line);
+  return line.split(/(?<=[。！？!?])/).map(part => {
+    const t = part.trim();
+    return t.length > 1 && !previous.includes(t) ? '<mark class="changed">' + inline(part) + '</mark>' : inline(part);
+  }).join('');
+}
+function renderFull(md, previous = null) {
+  const blocks = md.trim().split(/\n\s*\n/);
+  return blocks.map(block => {
+    const lines = block.split('\n');
+    if (lines.every(l => /^\s*([-*・])\s+/.test(l)))
+      return '<ul>' + lines.map(l => '<li>' + renderLine(l.replace(/^\s*([-*・])\s+/, ''), previous) + '</li>').join('') + '</ul>';
+    return '<p>' + lines.map(l => renderLine(l, previous)).join('<br>') + '</p>';
+  }).join('');
+}
+function parsePair(line) {
+  let s = line.trim().replace(/^[-*]\s+/, '');
+  let i = s.indexOf('｜'), width = 1;
+  if (i < 0) { i = s.indexOf(' | '); width = 3; }
+  if (i < 0) return null;
+  const o = s.slice(0, i).trim(), g = s.slice(i + width).trim();
+  return o ? { o, g } : null;
+}
+
+function start(source) {
+  hideAsk();
+  job = { source, text: '', done: false, error: '', items: 0, sent: null, pos: 0, glossing: false,
+          prevFull: null, norm: source.replace(/\s+/g, ' ').trim() };
+  app.classList.remove('closing', 'scrolled');
+  app.classList.add('loading');
+  titleEl.textContent = '翻訳中';
+  copyEl.disabled = true;
+  copyEl.classList.remove('copied');
+  fullEl.innerHTML = '<div class="skeleton"><span></span><span></span><span></span></div>';
+  pairsEl.hidden = false;
+  labelEl.textContent = '原文';
+  ilEl.innerHTML = '<div class="source"></div>';
+  ilEl.firstChild.textContent = source.trim();
+  scrollEl.scrollTop = 0;
+  reportSize();
+}
+
+function schedule() {
+  if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); });
+}
+
+function update() {
+  if (!job) return;
+  if (job.error) {
+    app.classList.remove('loading');
+    titleEl.textContent = '翻訳できませんでした';
+    fullEl.innerHTML = '<p class="message"></p>';
+    fullEl.firstChild.textContent = job.error;
+    reportSize();
+    return;
+  }
+  const answer = splitAnswer(job.text);
+  if (answer.full.trim()) fullEl.innerHTML = renderFull(answer.full, job.done ? job.prevFull : null);
+  if (answer.pairs) {
+    // While streaming, the last line may still be incomplete.
+    const lines = job.done || job.text.endsWith('\n') ? answer.pairs : answer.pairs.slice(0, -1);
+    if (!job.glossing && lines.some(l => parsePair(l))) {
+      ilEl.innerHTML = '';
+      labelEl.textContent = '対訳';
+      job.sent = null;
+      job.glossing = true;
+    }
+    for (; job.items < lines.length; job.items++) addPairLine(lines[job.items]);
+    updateRest();
+  }
+  if (job.done) {
+    app.classList.remove('loading');
+    titleEl.textContent = '翻訳';
+    if (job.prevFull != null) {
+      clearTimeout(job.fadeTimer);
+      job.fadeTimer = setTimeout(() => fullEl.querySelectorAll('mark.changed').forEach(m => m.classList.add('faded')), 6000);
+    }
+    copyEl.disabled = !answer.full.trim();
+    if (!answer.pairs || !ilEl.querySelector('.c')) {
+      labelEl.textContent = '原文';
+      ilEl.innerHTML = '<div class="source"></div>';
+      ilEl.firstChild.textContent = job.source.trim();
+    }
+  }
+  reportSize();
+}
+
+// Each phrase follows the original text: punctuation the answer left out is taken
+// from the original, a phrase that ends a sentence closes its row group, and the part
+// not yet glossed is shown after the last phrase. Blank lines in the answer are ignored.
+function addPairLine(line) {
+  const pair = parsePair(line);
+  if (!pair) return;
+  let shown = pair.o;
+  const o = pair.o.replace(/\s+/g, ' ');
+  const at = job.norm.indexOf(o, job.pos);
+  if (at >= 0 && at - job.pos <= 120) {
+    job.pos = at + o.length;
+    const tail = /^[.!?。！？,;:、]+["'’”)\]]*/.exec(job.norm.slice(job.pos));
+    if (tail) { shown += tail[0]; job.pos += tail[0].length; }
+  }
+  if (!job.sent) {
+    job.sent = document.createElement('div');
+    job.sent.className = 'sent';
+    ilEl.querySelector('.rest-block')?.remove();
+    ilEl.appendChild(job.sent);
+  }
+  const c = document.createElement('div');
+  c.className = 'c';
+  c.innerHTML = '<span class="o"></span><span class="g"></span>';
+  c.firstChild.textContent = shown;
+  c.lastChild.textContent = pair.g;
+  job.sent.appendChild(c);
+  if (/[.!?。！？]["'’”)\]]*$/.test(shown)) job.sent = null;
+}
+
+function updateRest() {
+  let rest = ilEl.querySelector('.rest-block');
+  const text = job.norm.slice(job.pos).trim();
+  if (!text || (job.done && job.pos === 0)) { if (rest) rest.remove(); return; }
+  if (!rest) {
+    rest = document.createElement('div');
+    rest.className = 'rest-block sent';
+    rest.innerHTML = '<span class="rest"></span>';
+  }
+  rest.firstChild.textContent = text;
+  ilEl.appendChild(rest);
+}
+
+function receive(d) {
+  if (!d || typeof d !== 'object') return;
+  if (d.op === 'start') { start(String(d.source || '')); return; }
+  if (d.op === 'close') {
+    // Esc first closes an open revision box, and the panel stays.
+    if (!askEl.hidden) { hideAsk(); send('keep-open'); return; }
+    closePanel();
+    return;
+  }
+  if (d.op === 'max') { setMax(!!d.on); return; }
+  if (d.op === 'probe') {
+    // A hidden page gets no animation frames, so apply pending updates first.
+    if (frame) { cancelAnimationFrame(frame); frame = 0; }
+    update();
+    send('probe:' + JSON.stringify(probe()));
+    return;
+  }
+  if (!job) return;
+  if (d.op === 'error') { job.error = String(d.message || ''); job.done = true; schedule(); return; }
+  if (d.op === 'revising') { reviseStart(); return; }
+  if (d.op === 'test-revise') { // self-test: the same request as selecting the first sentence
+    const full = splitAnswer(job.text).full.trim();
+    requestRevision((full.match(/^[^。！？!?\n]+[。！？!?]?/) || [full])[0], String(d.comment || ''));
+    return;
+  }
+  if (d.type === 'stream_event' && d.event && d.event.type === 'content_block_delta'
+      && d.event.delta && d.event.delta.type === 'text_delta') {
+    job.text += d.event.delta.text; schedule(); return;
+  }
+  if (d.type === 'result') {
+    if (!d.is_error && typeof d.result === 'string' && d.result) job.text = d.result;
+    else if (!job.text) job.error = '翻訳の結果を受け取れませんでした。';
+    job.done = true; schedule();
+  }
+}
+
+function probe() {
+  return { title: titleEl.textContent, full: fullEl.textContent.length, chunks: ilEl.querySelectorAll('.c').length,
+    sentences: ilEl.querySelectorAll('.sent:not(.rest-block)').length, rest: (ilEl.querySelector('.rest') || {}).textContent || '',
+    label: labelEl.textContent, loading: app.classList.contains('loading'), max: app.classList.contains('max'),
+    revised: !!(job && job.prevFull != null), changed: fullEl.querySelectorAll('mark.changed').length,
+    wide: getComputedStyle($('content')).maxWidth !== 'none', dpr: devicePixelRatio,
+    fonts: ['Noto Sans JP', 'Noto Sans'].map(f => document.fonts.check('16px "' + f + '"')) };
+}
+
+let lastSize = 0;
+function reportSize() {
+  const h = Math.ceil(document.querySelector('header').offsetHeight + $('content').scrollHeight);
+  if (h !== lastSize) { lastSize = h; send('size:' + h); }
+}
+new ResizeObserver(reportSize).observe($('content'));
+
+function closePanel() {
+  app.classList.add('closing');
+  setTimeout(() => send('hide'), 110);
+}
+
+copyEl.addEventListener('click', () => {
+  if (!job) return;
+  send('copy:' + plainText(splitAnswer(job.text).full));
+  copyEl.classList.add('copied');
+  clearTimeout(copiedTimer);
+  copiedTimer = setTimeout(() => copyEl.classList.remove('copied'), 1400);
+});
+$('close').addEventListener('click', closePanel);
+$('max').addEventListener('click', () => send('maximize'));
+function setMax(on) {
+  app.classList.toggle('max', on);
+  const label = on ? '元の大きさに戻す (F11)' : '画面いっぱいに広げる (F11)';
+  $('max').title = label;
+  $('max').setAttribute('aria-label', label);
+}
+// Double-clicking the header also toggles; WebView2 may handle it as a title bar instead.
+document.querySelector('header').addEventListener('dblclick', e => {
+  if (!e.target.closest('button')) send('maximize');
+});
+// ---- Revision requests ----
+// Selecting part of a finished answer opens a comment card at once: typing goes into
+// it, and Enter sends the selection, the comment (optional), the original and the
+// current answer to the listener, which streams the revised answer into this page.
+// The selected text stays highlighted while the card has the keyboard focus.
+const askEl = $('ask'), askForm = $('ask-form'), askInput = $('ask-input');
+let askSelection = '';
+function selectionInContent() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return null;
+  const range = sel.getRangeAt(0);
+  if (!$('content').contains(range.commonAncestorContainer)) return null;
+  const text = sel.toString().trim();
+  if (!text) return null;
+  // The bar goes right under the line of the last selected character; the whole range's
+  // box can reach into the next line when the selection ends at a line end.
+  const box = range.getBoundingClientRect();
+  const first = [...range.getClientRects()].find(r => r.width > 1) || box;
+  let bottom = box.bottom;
+  const node = range.endContainer, offset = range.endOffset;
+  if (node.nodeType === Node.TEXT_NODE && offset > 0) {
+    const last = document.createRange();
+    last.setStart(node, offset - 1);
+    last.setEnd(node, offset);
+    const b = last.getBoundingClientRect();
+    if (b.height) bottom = b.bottom;
+  }
+  return { text, range: range.cloneRange(), rect: { left: first.left, top: first.top, bottom } };
+}
+function placeAsk(rect) {
+  const w = askEl.offsetWidth, h = askEl.offsetHeight;
+  const x = Math.min(Math.max(8, rect.left), innerWidth - w - 8);
+  let y = rect.bottom + 8;
+  if (y + h > innerHeight - 8) y = Math.max(60, rect.top - h - 8);
+  askEl.style.left = x + 'px';
+  askEl.style.top = y + 'px';
+}
+function showAsk() {
+  if (!job || !job.done || job.error) return;
+  const s = selectionInContent();
+  if (!s) return;
+  askSelection = s.text;
+  if (window.CSS && CSS.highlights) CSS.highlights.set('ask', new Highlight(s.range));
+  askInput.value = '';
+  askForm.hidden = false;
+  askEl.hidden = false;
+  placeAsk(s.rect);
+  askInput.focus();
+}
+function hideAsk() {
+  askEl.hidden = true;
+  if (window.CSS && CSS.highlights) CSS.highlights.delete('ask');
+}
+function requestRevision(selection, comment) {
+  if (!job || !job.done || !selection) return;
+  hideAsk();
+  window.getSelection().removeAllRanges();
+  send('revise:' + JSON.stringify({ selection, comment, source: job.source, current: job.text }));
+}
+// The listener accepted a revision: the new answer replaces this one as it arrives.
+function reviseStart() {
+  job.prevFull = splitAnswer(job.text).full;
+  job.text = '';
+  job.done = false;
+  job.error = '';
+  job.items = 0;
+  job.sent = null;
+  job.pos = 0;
+  job.glossing = false;
+  app.classList.add('loading');
+  titleEl.textContent = '修正中';
+  copyEl.disabled = true;
+}
+$('content').addEventListener('mouseup', () => setTimeout(showAsk, 0));
+$('ask-send').addEventListener('click', () => requestRevision(askSelection, askInput.value.trim()));
+askInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { // not while the IME is converting
+    e.preventDefault();
+    requestRevision(askSelection, askInput.value.trim());
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    hideAsk();
+  } else if (e.ctrlKey && (e.key === 'c' || e.key === 'C') && askInput.selectionStart === askInput.selectionEnd) {
+    // Ctrl+C with nothing selected in the box copies the selected answer text, as usual.
+    e.preventDefault();
+    send('copy:' + askSelection);
+  }
+});
+// A click anywhere else closes the card (a new selection then opens a new one).
+document.addEventListener('mousedown', e => {
+  if (!askEl.hidden && !askEl.contains(e.target)) hideAsk();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePanel();
+  if (e.key === 'F11') { e.preventDefault(); send('maximize'); }
+  if (e.ctrlKey && !e.altKey && !e.shiftKey && (e.key === 'w' || e.key === 'W')) { e.preventDefault(); closePanel(); }
+});
+document.querySelector('header').addEventListener('mousedown', e => {
+  if (e.button === 0 && !e.target.closest('button')) send('drag');
+});
+scrollEl.addEventListener('scroll', () => {
+  app.classList.toggle('scrolled', scrollEl.scrollTop > 0);
+  if (!askEl.hidden && askForm.hidden) hideAsk();
+});
+if (host) host.addEventListener('message', e => receive(e.data));
+send('ready');
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+*.ahk text eol=lf
+*.cs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.ps1 text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+*.exe binary
+*.html text eol=lf
+*.txt text eol=lf
+*.dll binary
+*.ico binary
+*.gif binary
+*.mp4 binary
+*.png binary
+LICENSE text eol=lf
