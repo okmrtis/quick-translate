@@ -264,8 +264,9 @@ function update() {
   const answer = splitAnswer(job.text);
   if (answer.full.trim()) fullEl.innerHTML = renderFull(answer.full, job.done ? job.prevFull : null);
   if (answer.pairs) {
-    // While streaming, the last line may still be incomplete.
-    const lines = job.done || job.text.endsWith('\n') ? answer.pairs : answer.pairs.slice(0, -1);
+    // While streaming, the last line may still be incomplete (or the empty line after a
+    // final line break, which the next text fills in), so it is added only when done.
+    const lines = job.done ? answer.pairs : answer.pairs.slice(0, -1);
     if (!job.glossing && lines.some(l => parsePair(l))) {
       ilEl.innerHTML = '';
       labelEl.textContent = '対訳';

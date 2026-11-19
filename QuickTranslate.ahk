@@ -295,9 +295,13 @@ SelfTestPanel(outputPath, answerPath, sourcePath) {
     source := (sourcePath != "") ? FileRead(sourcePath, "UTF-8") : "source"
     PanelPost('{"op":"start","source":"' . JsonEscape(source) . '"}')
     part := StrLen(answer) // 3 + 1
-    Loop 3
+    ; A hidden page draws no frames, so each part is drawn (by a probe) before the next
+    ; arrives, as a shown panel does while the answer streams in.
+    Loop 3 {
         PanelPost('{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"'
             . JsonEscape(SubStr(answer, (A_Index - 1) * part + 1, part)) . '"}}}')
+        PanelProbe()
+    }
     PanelPost('{"type":"result","subtype":"success","is_error":false,"result":"' . JsonEscape(answer) . '"}')
     Sleep(500)
     probe := PanelProbe()
