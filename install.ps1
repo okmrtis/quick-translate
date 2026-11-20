@@ -147,5 +147,5 @@ if ($ready) { Step 'QuickTranslate is running' }
 else { Write-Warning "QuickTranslate started, but the panel did not report ready yet. See $events" }
 
 Write-Host ""
-Write-Host "Done. Select text in any app and press Ctrl+C twice."
+Write-Host "Done. Select text in any app and press Ctrl+C+C."
 Write-Host "To remove: powershell -NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $InstallRoot 'uninstall.ps1')`""

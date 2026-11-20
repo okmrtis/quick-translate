@@ -4,7 +4,7 @@
 
 | ファイル | 役割 |
 | --- | --- |
-| `QuickTranslate.ahk` | 常駐プログラム（AutoHotkey v2）。Ctrl+C の2回押しを見張り、Claude Code CLI に翻訳を頼み、窓を出す |
+| `QuickTranslate.ahk` | 常駐プログラム（AutoHotkey v2）。Ctrl+C+C を見張り、Claude Code CLI に翻訳を頼み、窓を出す |
 | `QuickTranslatePanel.html` | 翻訳の窓の中身。WebView2 で表示する |
 | `WebView2Loader.dll` | Microsoft の WebView2 SDK 1.0.3485.44 の読み込み部品（Microsoft 署名、無改変） |
 | `QuickTranslate.ico` | アイコン |
@@ -15,7 +15,7 @@
 
 ## 翻訳の流れ
 
-1. 同じ窓で Ctrl+C を 650 ms 以内に2回押すと、Windows のクリップボード変更通知でコピーを確かめ、その文字を翻訳します。1回だけのときは何もしません。
+1. 同じ窓で Ctrl+C+C を押す（2回目の Ctrl+C が 650 ms 以内）と、Windows のクリップボード変更通知でコピーを確かめ、その文字を翻訳します。1回だけのときは何もしません。
 2. 翻訳は、サインイン済みの Claude Code CLI を print モード（`-p --input-format stream-json --output-format stream-json --include-partial-messages`）で使います。ユーザー設定・フック・ツール・MCP は読み込ませません。
 3. 起動を待たずに済むよう、翻訳待ちの CLI を1つだけ先に起動しておき（約 150 MB）、1回の翻訳ごとに使い捨てます。続けて使っても会話がたまって遅くなることはありません。待機中の CLI は3時間ごとに入れ替えます。
 4. CLI はすべて常駐と同じ Windows のジョブに入れ、常駐が終わると必ず一緒に終わります。原文は CLI の標準入力に渡すだけで、出力を受け取る一時ファイル（`work\*.jsonl`）は読んだ直後に消します。

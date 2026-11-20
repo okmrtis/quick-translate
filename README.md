@@ -1,12 +1,12 @@
 # QuickTranslate
 
-**Ctrl+C を2回押すだけで、どのアプリの英文もその場で日本語に。**
+**Ctrl+C+C だけで、どのアプリの英文もその場で日本語に。**
 
 ![QuickTranslate のデモ](docs/demo.gif)
 
 （動画: [docs/demo.mp4](docs/demo.mp4)）
 
-- 文章を選んで **Ctrl+C を2回**。画面の右下にすぐ翻訳の窓が開き、訳が書かれるそばから表示されます。
+- 文章を選んで **Ctrl+C+C**。画面の右下にすぐ翻訳の窓が開き、訳が書かれるそばから表示されます。
 - 全文訳の下には、原文を語句ごとに区切り、その下にそれぞれの意味を添えた**対訳**が並びます。
 - 訳の一部を選ぶと、すぐ下に入力欄が開きます。直し方を書いて **Enter** を押すと、その箇所を中心に訳し直します（前後も必要に応じて直します）。
 - 翻訳の窓は Windows の普通の窓として扱われます。**Win+←/→** で画面の半分に寄せる、**Win+↑** で最大化、**Esc / Ctrl+W** で閉じる、などがそのまま使えます。
@@ -45,7 +45,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
 
 ## 使い方
 
-1. どのアプリでも、訳したい文章を選んで **Ctrl+C を2回**（0.65 秒以内）押します。1回だけ押したときは、いつもどおりのコピーです。
+1. どのアプリでも、訳したい文章を選んで **Ctrl+C+C**（Ctrl を押したまま C を 0.65 秒以内に2回）を押します。Ctrl+C だけのときは、いつもどおりのコピーです。
 2. 右下に窓が開き、「翻訳中」の表示のあと、訳が流れ込みます。全文訳の下に対訳が並びます。
 3. 訳を直したいときは、直したい部分を選び、すぐ下に開いた欄に直し方を書いて **Enter** を押します（書かずに Enter だけでも可）。変わった文には数秒だけ印が付きます。
 
@@ -85,7 +85,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\
 
 ## しくみ
 
-AutoHotkey v2 の常駐プログラムが Ctrl+C の2回押しを見張り、待機させておいた Claude Code CLI に翻訳を頼みます。答えは少しずつ受け取って、Microsoft Edge WebView2 で描いた窓に流し込みます。詳しくは [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) を見てください。
+AutoHotkey v2 の常駐プログラムが Ctrl+C+C を見張り、待機させておいた Claude Code CLI に翻訳を頼みます。答えは少しずつ受け取って、Microsoft Edge WebView2 で描いた窓に流し込みます。詳しくは [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) を見てください。
 
 ## ライセンス
 
@@ -102,7 +102,7 @@ QuickTranslate は個人のプロジェクトで、Anthropic・Microsoft・AutoH
 
 ## English
 
-**Select text in any Windows app and press Ctrl+C twice — a panel opens in the bottom-right corner and streams a Japanese translation.**
+**Select text in any Windows app and press Ctrl+C+C (hold Ctrl, press C twice) — a panel opens in the bottom-right corner and streams a Japanese translation.**
 
 - Below the full translation, the original is split into short phrases with each phrase's meaning under it.
 - Select part of the translation, type how to change it (optional) and press Enter to revise it in place.
