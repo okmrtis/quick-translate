@@ -65,6 +65,7 @@ ReleaseWindows(reason, code) {
     if panel["ctrl"]
         try ComCall(24, panel["ctrl"]) ; Close the WebView2 controller
     if panel["gui"] {
+        try PanelTaskbarIdentity(panel["gui"].Hwnd, "", true)
         try panel["gui"].Destroy()
         panel["gui"] := 0
     }
@@ -122,26 +123,33 @@ ClipboardChanged(dataType) {
 ; The copy itself is confirmed by Windows' clipboard-change notification at any time
 ; after the first press. Reading the clipboard sequence at each key press raced the
 ; source app: when the app copied before this thread ran, the change was missed and
-; the second press was dropped.
+; the second press was dropped. The clipboard sequence number, sampled at the first
+; press, is a second witness: the second press's copy always changes it, even when the
+; notification is late or does not reach this listener (it runs elevated on some PCs).
+; Each status line carries the press gap in ms, so a missed Ctrl+C+C can be explained.
 OnCopy() {
-    static firstAt := 0, firstWindow := 0
+    static firstAt := 0, firstWindow := 0, firstSeq := 0
     global isSending
     if isSending
         return
     sourceWindow := WinGetID("A")
     pressedAt := A_TickCount
+    gap := firstAt ? pressedAt - firstAt : -1
     WriteStatus("copy-key-received")
     if (sourceWindow != firstWindow || pressedAt - firstAt > 650) {
-        WriteStatus("first-copy-ready")
+        WriteStatus("first-copy-ready-gap" . gap . ((firstAt && sourceWindow != firstWindow) ? "-otherwindow" : ""))
         firstAt := pressedAt
         firstWindow := sourceWindow
+        firstSeq := DllCall("GetClipboardSequenceNumber", "UInt")
         return
     }
     copiedSince := firstAt
+    seqAtFirst := firstSeq
     firstAt := 0
     firstWindow := 0
-    if !WaitForTextCopySince(copiedSince, 800) {
-        WriteStatus("copy-change-timeout")
+    how := WaitForTextCopySince(copiedSince, seqAtFirst, 1500)
+    if (how = "") {
+        WriteStatus("copy-change-timeout-gap" . gap)
         return
     }
     Sleep(60) ; let the second copy finish writing
@@ -150,16 +158,25 @@ OnCopy() {
         WriteStatus("copy-empty")
         return
     }
-    WriteStatus("double-copy-recognized")
+    WriteStatus("double-copy-recognized-gap" . gap . "-" . how)
     SetTimer(() => Translate(selected, sourceWindow), -10)
 }
 
-WaitForTextCopySince(since, timeoutMs) {
+; Returns "notice" or "seq" for the witness that confirmed a text copy after the first
+; press, or "" when neither did before the timeout.
+WaitForTextCopySince(since, seqAtFirst, timeoutMs) {
     global lastTextCopyAt
     deadline := A_TickCount + timeoutMs
-    while (lastTextCopyAt < since && A_TickCount < deadline)
+    loop {
+        if (lastTextCopyAt >= since)
+            return "notice"
+        if (DllCall("GetClipboardSequenceNumber", "UInt") != seqAtFirst
+            && DllCall("IsClipboardFormatAvailable", "UInt", 13)) ; CF_UNICODETEXT
+            return "seq"
+        if (A_TickCount >= deadline)
+            return ""
         Sleep(15) ; lets the clipboard-change notification run
-    return lastTextCopyAt >= since
+    }
 }
 
 ; The answer layout matches the translation window: the full translation, a rule,
@@ -722,12 +739,20 @@ TranslateWithCli(selected) {
             : "翻訳を始められませんでした。Claude CLI（claude.exe）が見つかりません。")
         return
     }
-    ; The panel opens now in its loading state; the answer streams into it.
+    ; The panel opens now in its loading state; the answer streams into it. Activating
+    ; the window can take seconds, and timers run meanwhile: PollCli leaves this request
+    ; alone until the panel is open, so a fast answer is not sent to the older window
+    ; while the panel stays "翻訳中".
+    proc["opening"] := true
+    openedAt := A_TickCount
     try {
         proc["panel"] := ShowPanel(selected, proc["id"])
     } catch Error as err {
         WriteStatus("panel-show-error-" . RegExReplace(err.What, "[^\w]", "") . "-L" . err.Line)
     }
+    proc["opening"] := false
+    if (A_TickCount - openedAt > 1000)
+        WriteStatus("panel-show-slow-" . (A_TickCount - openedAt))
     if !proc["panel"] {
         if !selfTestHidden
             ToolTip("翻訳中…")
@@ -739,6 +764,10 @@ PollCli() {
     global cliRequests, panel
     waiting := []
     for proc in cliRequests {
+        if (proc.Has("opening") && proc["opening"]) {
+            waiting.Push(proc)
+            continue
+        }
         alive := ProcessAlive(proc)
         ; Lines the CLI wrote so far; after it exits this read gets the rest.
         lines := ReadNewLines(proc)
@@ -1071,8 +1100,13 @@ StartPanel() {
         DllCall("SetWindowPos", "ptr", g.Hwnd, "ptr", 0, "int", 0, "int", 0, "int", 0, "int", 0, "uint", 0x37) ; SWP_FRAMECHANGED
         icon := A_ScriptDir . "\QuickTranslate.ico"
         if FileExist(icon) {
-            try SendMessage(0x80, 1, LoadPicture(icon, "w32 h32", &kind), , "ahk_id " . g.Hwnd) ; WM_SETICON, taskbar
-            try SendMessage(0x80, 0, LoadPicture(icon, "w16 h16", &kind), , "ahk_id " . g.Hwnd)
+            ; Icon sizes for this screen's scale (32/16 at 100%, 48/24 at 150%).
+            dpi := DllCall("GetDpiForWindow", "ptr", g.Hwnd, "uint") || 96
+            big := DllCall("GetSystemMetricsForDpi", "int", 11, "uint", dpi, "int") || 32 ; SM_CXICON
+            small := DllCall("GetSystemMetricsForDpi", "int", 49, "uint", dpi, "int") || 16 ; SM_CXSMICON
+            try SendMessage(0x80, 1, LoadPicture(icon, "w" . big . " h" . big, &kind), , "ahk_id " . g.Hwnd) ; WM_SETICON, taskbar
+            try SendMessage(0x80, 0, LoadPicture(icon, "w" . small . " h" . small, &kind), , "ahk_id " . g.Hwnd)
+            PanelTaskbarIdentity(g.Hwnd, icon)
         }
     }
     ; Software drawing keeps the panel near 90 MB with sharp text. This local page
@@ -1285,8 +1319,12 @@ ShowPanel(source, requestId) {
     if selfTestHidden
         return true
     WinActivate("ahk_id " . hwnd)
-    if !WinActive("ahk_id " . hwnd) ; Windows kept another window in front
+    if !PanelBringToFront(hwnd) ; Windows kept another window in front
         WriteStatus("panel-not-foreground")
+    ; The source app can take the foreground back just after the panel opens (for
+    ; example when Ctrl is released); look again and bring the panel back once.
+    SetTimer(() => PanelKeepInFront(hwnd, 1), -250)
+    SetTimer(() => PanelKeepInFront(hwnd, 2), -900)
     PanelSetBounds()
     ; Windows 11: rounded corners, a hairline border and the matching dark or light frame.
     DllCall("dwmapi\DwmSetWindowAttribute", "ptr", hwnd, "uint", 33, "int*", 2, "uint", 4)
@@ -1331,6 +1369,65 @@ CloseTranslationWindow() {
         return
     }
     WinClose("A")
+}
+
+; Raises the panel above other windows and asks for the foreground. It never joins the
+; input of the window in front (AttachThreadInput): with a Chromium window in front that
+; left this listener hung, so the panel stayed "翻訳中" for good. The keyboard hook that
+; saw Ctrl+C already gives this listener the right to take the foreground.
+PanelBringToFront(hwnd) {
+    if WinActive("ahk_id " . hwnd)
+        return true
+    ; Briefly topmost, then ordinary again: the panel ends up above the other windows
+    ; even when Windows refuses the activation, and Snap Assist still treats it normally.
+    ; SWP_ASYNCWINDOWPOS (0x4000) keeps a busy window in front from blocking this call.
+    DllCall("SetWindowPos", "ptr", hwnd, "ptr", -1, "int", 0, "int", 0, "int", 0, "int", 0, "uint", 0x4013)
+    DllCall("SetWindowPos", "ptr", hwnd, "ptr", -2, "int", 0, "int", 0, "int", 0, "int", 0, "uint", 0x4013)
+    DllCall("SetForegroundWindow", "ptr", hwnd)
+    return WinActive("ahk_id " . hwnd) != 0
+}
+
+PanelKeepInFront(hwnd, round) {
+    global panel
+    if (!panel["visible"] || !DllCall("IsWindowVisible", "ptr", hwnd) || WinActive("ahk_id " . hwnd))
+        return
+    ; Only while the user has not moved on: a click elsewhere keeps that window in front.
+    if (GetKeyState("LButton", "P") || GetKeyState("RButton", "P"))
+        return
+    ok := PanelBringToFront(hwnd)
+    WriteStatus("panel-front-restored-" . round . (ok ? "" : "-refused"))
+    if ok
+        try ComCall(12, panel["ctrl"], "int", 0) ; MoveFocus
+}
+
+; Gives the panel its own taskbar identity (app ID, icon, name), so the taskbar shows
+; QuickTranslate's icon instead of grouping it under AutoHotkey64.exe with that icon.
+; clear=true removes the properties, which Windows requires before the window goes away.
+PanelTaskbarIdentity(hwnd, icon, clear := false) {
+    iid := Buffer(16)
+    DllCall("ole32\CLSIDFromString", "wstr", "{886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99}", "ptr", iid)
+    store := 0
+    if DllCall("shell32\SHGetPropertyStoreForWindow", "ptr", hwnd, "ptr", iid, "ptr*", &store) || !store
+        return false
+    command := '"' . A_AhkPath . '" "' . A_ScriptFullPath . '"'
+    ; PKEY_AppUserModel_*: RelaunchCommand 2, RelaunchDisplayNameResource 4,
+    ; RelaunchIconResource 3, then ID 5 last (and cleared first).
+    values := clear ? [[5, ""], [3, ""], [4, ""], [2, ""]]
+        : [[2, command], [4, "QuickTranslate"], [3, icon . ",0"], [5, "okmrtis.QuickTranslate"]]
+    key := Buffer(20, 0)
+    DllCall("ole32\CLSIDFromString", "wstr", "{9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3}", "ptr", key)
+    for item in values {
+        NumPut("uint", item[1], key, 16)
+        pv := Buffer(24, 0)
+        if !clear {
+            NumPut("ushort", 31, pv, 0) ; VT_LPWSTR; SetValue copies the string
+            NumPut("ptr", StrPtr(item[2]), pv, 8)
+        }
+        try ComCall(6, store, "ptr", key, "ptr", pv) ; IPropertyStore::SetValue
+    }
+    try ComCall(7, store) ; Commit
+    ObjRelease(store)
+    return true
 }
 
 PanelSetBounds() {

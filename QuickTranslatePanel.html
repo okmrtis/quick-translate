@@ -13,9 +13,9 @@
   --line: rgba(24, 24, 26, 0.08);
   --raised: #f3f3f4;
   --hover: rgba(24, 24, 26, 0.06);
-  --gloss: #1d4e9e;
-  --tick: rgba(29, 78, 158, 0.32);
-  --progress: #2f6fd6;
+  --gloss: #0f5f59;
+  --tick: rgba(15, 95, 89, 0.32);
+  --progress: #0d8a80;
   --changed: rgba(255, 200, 40, 0.42);
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08);
   --bar: #ffffff;
@@ -33,9 +33,9 @@
     --line: rgba(237, 237, 237, 0.09);
     --raised: #2a2a2d;
     --hover: rgba(237, 237, 237, 0.08);
-    --gloss: #9ec1ff;
-    --tick: rgba(158, 193, 255, 0.36);
-    --progress: #7fb0ff;
+    --gloss: #7fe0d4;
+    --tick: rgba(127, 224, 212, 0.36);
+    --progress: #22b3a5;
     --changed: rgba(255, 200, 40, 0.30);
     --shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07);
     --bar: #2a2a2d;
@@ -107,7 +107,7 @@ main:hover::-webkit-scrollbar-thumb { background-color: rgba(128, 128, 133, 0.35
 #ask { position: fixed; z-index: 10; }
 #ask[hidden], #ask [hidden] { display: none !important; }
 @keyframes ask-in { from { opacity: 0; transform: translateY(4px) scale(0.98); } }
-::highlight(ask) { background-color: rgba(47, 111, 214, 0.22); }
+::highlight(ask) { background-color: rgba(13, 138, 128, 0.22); }
 #ask-form { display: flex; align-items: center; gap: 6px; width: 300px; max-width: calc(100vw - 24px); height: 40px; padding: 0 5px 0 14px; background: var(--bar); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10); animation: ask-in 140ms var(--ease); }
 #ask-form:focus-within { border-color: var(--progress); }
 #ask-input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: 13.5px/1.4 var(--jp); }
@@ -136,10 +136,10 @@ mark.changed.faded { background: transparent; }
 <div id="app" class="loading">
   <header>
     <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
-      <rect x="1" y="1" width="62" height="62" rx="15" fill="#eef2f8" stroke="rgba(24,40,72,0.10)" stroke-width="1"/>
+      <rect x="1" y="1" width="62" height="62" rx="15" fill="#edf5f4" stroke="rgba(16,60,56,0.10)" stroke-width="1"/>
       <path d="M14 9h16a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6h-9l-6 5v-5h-1a6 6 0 0 1-6-6V15a6 6 0 0 1 6-6z" fill="#d5dbe5"/>
       <text x="22" y="26.2" text-anchor="middle" font-family="Segoe UI Variable Display, Segoe UI, sans-serif" font-weight="600" font-size="13.5" fill="#56606f">A</text>
-      <path d="M34 26h16a7 7 0 0 1 7 7v11a7 7 0 0 1-7 7h-1v6l-7-6H34a7 7 0 0 1-7-7V33a7 7 0 0 1 7-7z" fill="#2563eb"/>
+      <path d="M34 26h16a7 7 0 0 1 7 7v11a7 7 0 0 1-7 7h-1v6l-7-6H34a7 7 0 0 1-7-7V33a7 7 0 0 1 7-7z" fill="#0d9488"/>
       <text x="42" y="44.6" text-anchor="middle" font-family="Noto Sans JP, Yu Gothic UI, sans-serif" font-weight="500" font-size="15" fill="#ffffff">あ</text>
     </svg>
     <span id="title">翻訳中</span>
@@ -229,8 +229,23 @@ function parsePair(line) {
   return o ? { o, g } : null;
 }
 
+// The listener always ends a request within about two minutes; if nothing has ended
+// this one well after that, the listener stopped answering, so the panel says so.
+const WATCH_MS = 150000;
+function watch() {
+  clearTimeout(job.watchTimer);
+  const current = job;
+  job.watchTimer = setTimeout(() => {
+    if (job !== current || job.done || job.error) return;
+    job.error = '翻訳の結果が届きませんでした。もう一度 Ctrl+C+C を押してください。';
+    job.done = true;
+    schedule();
+  }, WATCH_MS);
+}
+
 function start(source) {
   hideAsk();
+  if (job) clearTimeout(job.watchTimer);
   job = { source, text: '', done: false, error: '', items: 0, sent: null, pos: 0, glossing: false,
           prevFull: null, norm: source.replace(/\s+/g, ' ').trim() };
   app.classList.remove('closing', 'scrolled');
@@ -244,6 +259,7 @@ function start(source) {
   ilEl.innerHTML = '<div class="source"></div>';
   ilEl.firstChild.textContent = source.trim();
   scrollEl.scrollTop = 0;
+  watch();
   reportSize();
 }
 
@@ -483,6 +499,7 @@ function reviseStart() {
   app.classList.add('loading');
   titleEl.textContent = '修正中';
   copyEl.disabled = true;
+  watch();
 }
 $('content').addEventListener('mouseup', () => setTimeout(showAsk, 0));
 $('ask-send').addEventListener('click', () => requestRevision(askSelection, askInput.value.trim()));

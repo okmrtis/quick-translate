@@ -1,13 +1,13 @@
 {
   "tool": "QuickTranslate",
-  "version": "1.9.1",
+  "version": "1.9.5",
   "runtime": "AutoHotkey v2.0.28 portable",
   "runtime_url": "https://github.com/AutoHotkey/AutoHotkey/releases/tag/v2.0.28",
   "archive_sha256": "B63BE7548792B4AD0DFE424D91CC69376694ED2F758245B7A75A0C77D693B478",
   "runtime_sha256": "373181727d1ae858564d4daa678f9fa6cf330d1751f8b284a369c79afdb05e98",
-  "script_sha256": "6d7cbcaa244c9a89beb7ba549b55ab07608fc9fe778ec011350c00b368324cc2",
+  "script_sha256": "b0fac4b8d112084c179959f4b1c38d5a56b8dc48798151ea4bf19cf59d72b183",
   "startup_script_sha256": "114a048544eab9b7d4f4a243cb7e975122fd2549e26920650ae41a50337ecbef",
-  "panel_sha256": "2aac546fc5dd70c588e78f0314813c65b0b8a7aacb660758866fbadc73fca014",
+  "panel_sha256": "cbb246f9afb17c7769892482ed9c5cb7d774493559f6d0f95a6615276dcdd0ec",
   "webview2_loader_sha256": "fb2c805c68d6e170ec405b27ced3c9e37980297b232c002b40bea42715410ecf",
   "webview2_loader_version": "1.0.3485.44",
   "webview2_loader_source": "Microsoft.Web.WebView2 SDK 1.0.3485.44, Microsoft-signed, unchanged (license: WebView2Loader-LICENSE.txt)"
